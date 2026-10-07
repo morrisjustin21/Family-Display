@@ -1,20 +1,33 @@
 import { useEffect, useState } from 'react'
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'
+import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from './firebase'
+import { usePhotos } from './usePhotos'
+import Slideshow from './Slideshow'
+import Photos from './Photos'
 
-function Clock() {
+function Display({ photos, onManage }) {
   const [now, setNow] = useState(new Date())
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
+
   return (
-    <div className="text-center">
-      <div className="text-8xl font-light">
-        {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-      </div>
-      <div className="text-2xl text-neutral-400 mt-4">
-        {now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
+    <div className="relative h-full bg-black text-white overflow-hidden">
+      <Slideshow photos={photos} />
+      <button
+        onClick={onManage}
+        className="absolute top-4 left-4 z-10 rounded-lg bg-black/40 px-3 py-2 text-sm text-neutral-300"
+      >
+        Photos
+      </button>
+      <div className="absolute bottom-0 inset-x-0 z-10 bg-black/50 px-8 py-5">
+        <div className="text-6xl font-light leading-none">
+          {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+        </div>
+        <div className="text-xl text-neutral-300 mt-2">
+          {now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
+        </div>
       </div>
     </div>
   )
@@ -58,6 +71,8 @@ function Login() {
 
 export default function App() {
   const [user, setUser] = useState(undefined)
+  const [view, setView] = useState('display')
+  const photos = usePhotos(!!user)
 
   useEffect(() => onAuthStateChanged(auth, (u) => setUser(u)), [])
 
@@ -65,22 +80,17 @@ export default function App() {
     return <div className="h-full bg-neutral-900" />
   }
 
-  return (
-    <div className="h-full flex flex-col items-center justify-center bg-neutral-900 text-white">
-      {user ? (
-        <>
-          <Clock />
-          <div className="mt-10 text-sm text-neutral-500">Signed in as {user.email}</div>
-          <button
-            className="mt-3 text-sm text-neutral-400 underline"
-            onClick={() => signOut(auth)}
-          >
-            Sign out
-          </button>
-        </>
-      ) : (
+  if (!user) {
+    return (
+      <div className="h-full flex items-center justify-center bg-neutral-900 text-white">
         <Login />
-      )}
-    </div>
-  )
+      </div>
+    )
+  }
+
+  if (view === 'photos') {
+    return <Photos photos={photos} onBack={() => setView('display')} />
+  }
+
+  return <Display photos={photos} onManage={() => setView('photos')} />
 }
